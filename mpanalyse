@@ -1,0 +1,667 @@
+#!/usr/bin/php
+<?php
+
+if ( isset($argv[1]) ) {
+	$filename = $argv[1];
+} else {
+	echo 'Usage: ' . $argv[0] . ' <mpeg_audio_file>' . "\n";
+	exit(1);
+}
+
+$file = fopen($filename, 'rb');
+
+function hex2dec($hex) {
+	$dec = 0;
+	for ( $pos = 0 ; $pos < strlen($hex) ; $pos++ ) {
+		$char = substr($hex, $pos, 1);
+		switch ($char) {
+		case '0':
+			$val = 0;
+			break;
+		case '1':
+			$val = 1;
+			break;
+		case '2':
+			$val = 2;
+			break;
+		case '3':
+			$val = 3;
+			break;
+		case '4':
+			$val = 4;
+			break;
+		case '5':
+			$val = 5;
+			break;
+		case '6':
+			$val = 6;
+			break;
+		case '7':
+			$val = 7;
+			break;
+		case '8':
+			$val = 8;
+			break;
+		case '9':
+			$val = 9;
+			break;
+		case 'a':
+			$val = 10;
+			break;
+		case 'b':
+			$val = 11;
+			break;
+		case 'c':
+			$val = 12;
+			break;
+		case 'd':
+			$val = 13;
+			break;
+		case 'e':
+			$val = 14;
+			break;
+		case 'f':
+			$val = 15;
+			break;
+		}
+		$dec = ($dec * pow(16, $pos)) + $val;
+	}
+	return $dec;
+}
+
+function get_mp_data($file, $length = 1) {
+	$length == 0 ? $length = 1 : 0;
+	$return = hex2dec(bin2hex(fread($file, $length)));
+	return $return;
+
+}
+
+$i = 0;
+while ( !feof($file) ) {
+	$data = get_mp_data($file);
+	if ( ($data & 255) != 255 ) {
+		continue;
+	}
+
+	// We have a potential - find out more...
+	$data = get_mp_data($file);
+	if ( ($data & 224) != 224 ) {
+		continue;
+	}
+
+	$MPEG_Audio_version_ID = ($data & 24) / 8;
+	switch ($MPEG_Audio_version_ID) {
+	case 0:
+		$MPEG_Audio_version_ID = 'MPEG Version 2.5';
+		break;
+	case 1:
+		$MPEG_Audio_version_ID = 'reserved';
+		continue 2;
+	case 2:
+		$MPEG_Audio_version_ID = 'MPEG Version 2';
+		break;
+	case 3:
+		$MPEG_Audio_version_ID = 'MPEG Version 1';
+		break;
+	}
+
+	$Layer_description = ($data & 6) /2;
+	switch ($Layer_description) {
+	case 0:
+		$Layer_description = 'reserved';
+		continue 2;
+	case 1:
+		$Layer_description = 'Layer III';
+		$frame_size = 1152;	// Samples per frame
+		$slot_size = 1;		// Slot size in bytes
+		break;
+	case 2:
+		$Layer_description = 'Layer II';
+		$frame_size = 1152;
+		$slot_size = 1;
+		break;
+	case 3:
+		$Layer_description = 'Layer I';
+		$frame_size = 384;
+		$slot_size = 4;
+		break;
+	}
+
+	$Protection_bit = $data & 1;
+	switch ($Protection_bit) {
+	case 0:
+		$Protection_bit = 'Protected by CRC';
+		break;
+	case 1:
+		$Protection_bit = 'Not protected';
+		break;
+	}
+
+	$data = get_mp_data($file);
+	$Bitrate_index = ($data & 240) / 16;
+	switch ($Bitrate_index) {
+	case 0:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 'free';
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 'free';
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 'free';
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 'free';
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 'free';
+			break;
+		}
+		break;
+	case 1:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 32;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 32;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 32;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 32;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 8;
+			break;
+		}
+		break;
+	case 2:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 64;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 48;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 40;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 48;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 16;
+			break;
+		}
+		break;
+	case 3:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 96;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 56;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 48;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 56;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 24;
+			break;
+		}
+		break;
+	case 4:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 128;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 64;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 56;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 64;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 32;
+			break;
+		}
+		break;
+	case 5:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 160;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 80;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 64;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 80;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 40;
+			break;
+		}
+		break;
+	case 6:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 192;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 96;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 80;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 96;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 48;
+			break;
+		}
+		break;
+	case 7:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 224;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 112;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 96;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 112;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 56;
+			break;
+		}
+		break;
+	case 8:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 256;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 128;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 112;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 128;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 64;
+			break;
+		}
+		break;
+	case 9:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 288;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 160;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 128;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 144;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 80;
+			break;
+		}
+		break;
+	case 10:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 320;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 192;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 160;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 160;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 96;
+			break;
+		}
+		break;
+	case 11:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 352;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 224;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 192;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 176;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 112;
+			break;
+		}
+		break;
+	case 12:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 384;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 256;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 224;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 192;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 128;
+			break;
+		}
+		break;
+	case 13:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 416;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 320;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 256;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 224;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 144;
+			break;
+		}
+		break;
+	case 14:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 448;
+			break;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 384;
+			break;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 320;
+			break;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 256;
+			break;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 160;
+			break;
+		}
+		break;
+	case 15:
+		switch ($MPEG_Audio_version_ID . '-' . $Layer_description) {
+		case 'MPEG Version 1-Layer I':
+			$Bitrate_index = 'bad';
+			continue 3;
+		case 'MPEG Version 1-Layer II':
+			$Bitrate_index = 'bad';
+			continue 3;
+		case 'MPEG Version 1-Layer III':
+			$Bitrate_index = 'bad';
+			continue 3;
+		case 'MPEG Version 2-Layer I':
+			$Bitrate_index = 'bad';
+			continue 3;
+		case 'MPEG Version 2-Layer II' || 'MPEG Version 1-Layer II':
+			$Bitrate_index = 'bad';
+			continue 3;
+		}
+		break;
+	}
+
+	$Sampling_rate_frequency_index = ($data & 12) / 4;
+	switch ($Sampling_rate_frequency_index) {
+	case 0:
+		switch ($MPEG_Audio_version_ID) {
+		case 'MPEG Version 1':
+			$Sampling_rate_frequency_index = 44100;
+			break;
+		case 'MPEG Version 2':
+			$Sampling_rate_frequency_index = 22050;
+			break;
+		case 'MPEG Version 2.5':
+			$Sampling_rate_frequency_index = 11025;
+			break;
+		}
+		break;
+	case 1:
+		switch ($MPEG_Audio_version_ID) {
+		case 'MPEG Version 1':
+			$Sampling_rate_frequency_index = 48000;
+			break;
+		case 'MPEG Version 2':
+			$Sampling_rate_frequency_index = 24000;
+			break;
+		case 'MPEG Version 2.5':
+			$Sampling_rate_frequency_index = 12000;
+			break;
+		}
+		break;
+	case 2:
+		switch ($MPEG_Audio_version_ID) {
+		case 'MPEG Version 1':
+			$Sampling_rate_frequency_index = 32000;
+			break;
+		case 'MPEG Version 2':
+			$Sampling_rate_frequency_index = 16000;
+			break;
+		case 'MPEG Version 2.5':
+			$Sampling_rate_frequency_index = 8000;
+			break;
+		}
+		break;
+	case 3:
+		switch ($MPEG_Audio_version_ID) {
+		case 'MPEG Version 1':
+			$Sampling_rate_frequency_index = 'reserved';
+			continue 3;
+		case 'MPEG Version 2':
+			$Sampling_rate_frequency_index = 'reserved';
+			continue 3;
+		case 'MPEG Version 2.5':
+			$Sampling_rate_frequency_index = 'reserved';
+			continue 3;
+		}
+		break;
+	}
+
+	$Padding_bit = ($data & 2) / 2;
+	switch ($Padding_bit) {
+	case 0:
+		$Padding_bit = 'frame is not padded';
+		$Padding = 0;
+		break;
+	case 1:
+		$Padding_bit = 'frame is padded with one extra slot';
+		$Padding = $slot_size;
+		break;
+	}
+
+	$Private_bit = $data & 1;
+	switch ($Private_bit) {
+	case 0:
+		$Private_bit = 'private bit is not set';
+		break;
+	case 1:
+		$Private_bit = 'private bit is set';
+		break;
+	}
+
+	$data = get_mp_data($file);
+	$Channel_Mode = ($data & 192) / 64;
+	switch ($Channel_Mode) {
+	case 0:
+		$Channel_Mode = 'Stereo';
+		break;
+	case 1:
+		$Channel_Mode = 'Joint Stereo';
+		break;
+	case 2:
+		$Channel_Mode = 'Dual Channel';
+		break;
+	case 3:
+		$Channel_Mode = 'Mono';
+		break;
+	}
+
+	$Mode_extension = ($data & 48) / 16;
+	switch ($Mode_extension) {
+	case 0:
+		switch ($Layer_description) {
+		case 'Layer I' || 'Layer II':
+			$Mode_extension = 'bands 4 to 31';
+			break;
+		case 'Layer III':
+			$Mode_extension = '';
+			break;
+		}
+		break;
+	case 1:
+		switch ($Layer_description) {
+		case 'Layer I' || 'Layer II':
+			$Mode_extension = 'bands 8 to 31';
+			break;
+		case 'Layer III':
+			$Mode_extension = 'Intensity stereo';
+			break;
+		}
+		break;
+	case 2:
+		switch ($Layer_description) {
+		case 'Layer I' || 'Layer II':
+			$Mode_extension = 'bands 12 to 31';
+			break;
+		case 'Layer III':
+			$Mode_extension = 'MS stereo';
+			break;
+		}
+		break;
+	case 3:
+		switch ($Layer_description) {
+		case 'Layer I' || 'Layer II':
+			$Mode_extension = 'bands 16 to 31';
+			break;
+		case 'Layer III':
+			$Mode_extension = 'Intensity stereo, MS stereo';
+			break;
+		}
+		break;
+	}
+
+	$Copyright = ($data & 8) / 8;
+	switch ($Copyright) {
+	case 0:
+		$Copyright = 'Audio is not copyrighted';
+		break;
+	case 1:
+		$Copyright = 'Audio is copyrighted';
+		break;
+	}
+
+	$Original = ($data & 4) / 4;
+	switch ($Original) {
+	case 0:
+		$Original = 'Copy of original media';
+		break;
+	case 1:
+		$Original = 'Original media';
+		break;
+	}
+
+	$Emphasis = ($data & 4) / 4;
+	switch ($Emphasis) {
+	case 0:
+		$Emphasis = 'none';
+		break;
+	case 1:
+		$Emphasis = '50/15 ms';
+		break;
+	case 2:
+		$Emphasis = 'reserved';
+		break;
+	case 3:
+		$Emphasis = 'CCIT J.17';
+		break;
+	}
+
+	$position = ftell($file);
+
+if ( $Layer_description == 'Layer I' ) {
+	$frame_length = ( 12 * $Bitrate_index * 1000 / $Sampling_rate_frequency_index + $Padding ) * 4;
+} else {
+	$frame_length = 144 * $Bitrate_index * 1000 / $Sampling_rate_frequency_index + $Padding;
+}
+
+	echo "Frame #: $i @ position: $position
+Frame Length: $frame_length
+MPEG_Audio_version_ID: $MPEG_Audio_version_ID
+Layer_description: $Layer_description
+Protection_bit: $Protection_bit
+Bitrate_index: $Bitrate_index
+Sampling_rate_frequency_index: $Sampling_rate_frequency_index
+Padding_bit: $Padding_bit
+Padding: $Padding
+Private_bit: $Private_bit
+Channel_Mode: $Channel_Mode
+Copyright: $Copyright
+Original: $Original
+Emphasis: $Emphasis
+
+";
+
+	$forward = floor($frame_length);
+	if ( $forward <= 1 ) {
+		echo "ALERT!!! forward = $forward\n\n";
+	} else {
+		echo 'Next: ' . ($forward + $position) . "\n\n";
+		$forward = $forward - 4;
+	}
+
+#	get_mp_data($file, $forward);
+	fseek($file, $forward, SEEK_CUR);
+
+	$i++;
+
+}
+
+fclose($file);
+
+?>
+

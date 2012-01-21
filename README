@@ -1,0 +1,12 @@
+MPEG Audio Analyser
+===================
+
+Thanks to some excellent information collated by Adam Bernstein at:
+<http://mpgedit.org/mpgedit/mpeg_format/mpeghdr.htm#MPEG HEADER>
+this little analyzer was possible. I've included the page in the repo
+for fear that it might go missing some day..
+
+Odly enough, the analyser is written in PHP.
+
+To use, PHP should be installed at /usr/bin/php. Then just run:
+./mpanalyse <mpeg_audio_filename>
