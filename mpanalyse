@@ -621,7 +621,7 @@ while ( !feof($file) ) {
 		break;
 	}
 
-	$position = ftell($file);
+	$frame_start_position = ftell($file) - 4;
 
 if ( $Layer_description == 'Layer I' ) {
 	$frame_length = ( 12 * $Bitrate_index * 1000 / $Sampling_rate_frequency_index + $Padding ) * 4;
@@ -629,7 +629,7 @@ if ( $Layer_description == 'Layer I' ) {
 	$frame_length = 144 * $Bitrate_index * 1000 / $Sampling_rate_frequency_index + $Padding;
 }
 
-	echo "Frame #: $i @ position: $position
+	echo "Frame #: $i @ position: $frame_start_position
 Frame Length: $frame_length
 MPEG_Audio_version_ID: $MPEG_Audio_version_ID
 Layer_description: $Layer_description
@@ -650,7 +650,7 @@ Emphasis: $Emphasis
 	if ( $forward <= 1 ) {
 		echo "ALERT!!! forward = $forward\n\n";
 	} else {
-		echo 'Next: ' . ($forward + $position) . "\n\n";
+		echo 'Next: ' . ($forward + $frame_start_position) . "\n\n";
 		$forward = $forward - 4;
 	}
 
