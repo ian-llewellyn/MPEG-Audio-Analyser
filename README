@@ -10,3 +10,6 @@ Odly enough, the analyser is written in PHP.
 
 To use, PHP should be installed at /usr/bin/php. Then just run:
 ./mpanalyse <mpeg_audio_filename>
+OR
+./mpanalyse <mpeg_audio_filename> --wave
+to get a fancy CLI peak waveform (MP2 files with energy levels only)
