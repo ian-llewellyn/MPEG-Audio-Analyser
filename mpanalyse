@@ -80,7 +80,7 @@ function get_mp_data($file, $length = 1) {
 
 }
 
-$i = 0;
+$frame_number = 1;
 while ( !feof($file) ) {
 	$frame_start_position = ftell($file);
 
@@ -637,7 +637,7 @@ while ( !feof($file) ) {
 	$next_frame = $frame_start_position + $forward;
 
 	if ( !isset($wave) || $wave === false ) {
-		echo "Frame $i @ position:\t$frame_start_position
+		echo "Frame $frame_number @ position:\t$frame_start_position
 Frame Length: $frame_length
 Next Frame position:\t$next_frame
 
@@ -680,13 +680,12 @@ Sampling_rate_frequency_index: $Sampling_rate_frequency_index
 	if ( $forward <= 1 ) {
 		fprintf(STDERR, "ALERT!!! forward = $forward\n");
 		# Force kick it on
-#		$forward = 1;
+		$forward = 1;
 	}
 
-#	get_mp_data($file, $forward);
 	fseek($file, $frame_start_position + $forward);
 
-	$i++;
+	$frame_number++;
 
 }
 
