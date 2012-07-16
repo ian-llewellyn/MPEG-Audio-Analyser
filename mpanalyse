@@ -674,7 +674,7 @@ Sampling_rate_frequency_index: $Sampling_rate_frequency_index
 			$RPrint .= '=';
 		}
 		if ($Channel_Mode == 'Mono') $RPrint = '';
-		printf("%39s||%-39s", $LPrint, $RPrint);
+		printf("%39s||%-39s\n", $LPrint, $RPrint);
 	}
 
 	if ( $forward <= 1 ) {
